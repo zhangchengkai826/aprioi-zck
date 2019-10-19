@@ -3,62 +3,84 @@
  */
 package zck.aprioi;
 
-import java.io.File;
-import java.io.FileInputStream;
+import java.io.BufferedReader;
 import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Scanner;
 import java.util.Iterator;
-
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.xssf.usermodel.XSSFSheet;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import java.util.Set;
 
 public class AprioiZckSampleApp {
-    public static void main(String[] args) {
-        if(args.length < 1){
-            System.err.println("Usage: java AprioiZckSampleApp <path-to-dataset (should be an excel document)>");
-            System.err.printf("Current Working Dir: %s", System.getProperty("user.dir"));
-            return;
-        }
-        try {
-            File file = new File(args[0]);
-            FileInputStream fis = new FileInputStream(file);
-            XSSFWorkbook workBook = new XSSFWorkbook(fis);
-            XSSFSheet sheet = workBook.getSheetAt(0);
-
-            int _cnt = 0;
-
-            Iterator<Row> itr = sheet.iterator();
-            while (itr.hasNext() && _cnt < 10) {
-                _cnt++;
-                Row row = itr.next();
-                Iterator<Cell> itc = row.cellIterator();
-                while (itc.hasNext()) {
-                    Cell cell = itc.next();
-                    switch (cell.getCellType()) {
-                    case STRING:
-                        System.out.print(cell.getStringCellValue() + "\t");
-                        break;
-                    case NUMERIC:
-                        System.out.print(cell.getNumericCellValue() + "\t");
-                        break;
-                    case BOOLEAN:
-                        System.out.print(cell.getBooleanCellValue() + "\t");
-                        break;
-                    default:
-                        break;
+    private static boolean aprioi(String dataFilePath, int minSupCnt, double minConfThr) {
+        BufferedReader br;
+        
+        try{
+            br = new BufferedReader(new FileReader(dataFilePath));
+            String line;
+            br.readLine();
+            HashMap<String, Integer> m = new HashMap<String, Integer>();
+            while((line = br.readLine()) != null) {
+                String[] tokens = line.split(" |, ");
+                for(int i = 1; i < tokens.length; i++) {
+                    if(m.get(tokens[i]) == null) {
+                        m.put(tokens[i], 1);
+                    } else {
+                        m.put(tokens[i], m.get(tokens[i])+1);
                     }
                 }
-                System.out.println("");
             }
-
-            workBook.close();
-            fis.close();
-        } catch (FileNotFoundException fe) {
-            fe.printStackTrace();
-        } catch (IOException ie) {
-            ie.printStackTrace();
+            Iterator<String> it = m.keySet().iterator();
+            while(it.hasNext()){
+                String k = it.next();
+                Integer v = m.get(k);
+                
+            }
+            br.close();
+        } catch(FileNotFoundException e) {
+            e.printStackTrace();
+            return false;
+        } catch(IOException e){
+            e.printStackTrace();
+            return false;
         }
+        
+        return true;
+    }
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+
+        String defaultDataFilePath = "test-data.txt";
+        System.out.println(String.format("Please specify the data file path (default - %s):", defaultDataFilePath));
+        String dataFilePath = sc.nextLine();
+        if(dataFilePath.isEmpty()) {
+            dataFilePath = defaultDataFilePath;
+        }
+        System.out.println(String.format("INFO: Data file path: %s", dataFilePath));
+
+        int defaultMinSupCnt = 2;
+        System.out.println(String.format("Please specify the minimum support count (default - %d):", defaultMinSupCnt));
+        int minSupCnt;
+        try{
+            minSupCnt = Integer.parseInt(sc.nextLine());
+        } catch(NumberFormatException e){
+            minSupCnt = defaultMinSupCnt;
+        }
+        System.out.println(String.format("INFO: Minimum support count: %d", minSupCnt));
+
+        double defaultMinConfThr = 0.5;
+        System.out.println(String.format("Please specify the minimum confidence threshold (default - %f):", defaultMinConfThr));
+        double minConfThr;
+        try{
+            minConfThr = Double.parseDouble(sc.nextLine());
+        } catch(NumberFormatException e){
+            minConfThr = defaultMinConfThr;
+        }
+        System.out.println(String.format("INFO: Minimum confidence threshold: %f", minConfThr));
+
+        aprioi(dataFilePath, minSupCnt, minConfThr);
+
+        sc.close();
     }
 }
