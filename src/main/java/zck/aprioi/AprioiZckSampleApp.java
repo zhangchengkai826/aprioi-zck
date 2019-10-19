@@ -7,15 +7,61 @@ import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Scanner;
 import java.util.Iterator;
-import java.util.Set;
+import java.util.Scanner;
 
 public class AprioiZckSampleApp {
+    private static class ItemSet{
+        public ItemSet(Integer supCnt) {
+            this.supCnt = supCnt;
+        }
+        public ArrayList<String> items;
+        public Integer supCnt;
+    }
+    private static ArrayList<ItemSet> selfJoin(ArrayList<ItemSet> x){
+        ArrayList<ItemSet> result = new ArrayList<ItemSet>();
+        for(int i = 0; i < x.size(); i++) {
+            ItemSet a = x.get(i);
+            for(int j = i+1; j < x.size(); j++) {
+                ItemSet b = x.get(j);
+                boolean ok = true;
+                // a.items & b.items are ordered. (this can be proved by induction)
+                for(int k = 0; k < a.items.size()-1; k++) {
+                    if(a.items.get(k) != b.items.get(k)) {
+                        ok = false;
+                        break;
+                    }
+                }
+                if(ok) {
+                    // itemset support count cannot be determined yet.
+                    ItemSet newItemSet = new ItemSet(0);
+                    for(int k = 0; k < a.items.size(); k++) {
+                        newItemSet.items.add(a.items.get(k));
+                    }
+                    newItemSet.items.add(b.items.get(b.items.size()-1));
+                    result.add(newItemSet);
+                }
+            }
+        }
+        return result;
+    }
+    private static ArrayList<ItemSet> prune(ArrayList<ItemSet> C1, ArrayList<ItemSet> C) {
+        ArrayList<ItemSet> result = new ArrayList<ItemSet>();
+        for(ItemSet s : C1) {
+            for(String itm : s.items) {
+                System.out.println(itm);
+            }
+            System.out.println("");
+        }
+        return result;
+    }
     private static boolean aprioi(String dataFilePath, int minSupCnt, double minConfThr) {
         BufferedReader br;
-        
+        ArrayList<ItemSet> C = new ArrayList<ItemSet>();
+        ArrayList<ItemSet> freqItemSets = new ArrayList<ItemSet>();
         try{
             br = new BufferedReader(new FileReader(dataFilePath));
             String line;
@@ -35,8 +81,19 @@ public class AprioiZckSampleApp {
             while(it.hasNext()){
                 String k = it.next();
                 Integer v = m.get(k);
-                
+                if(v >= minSupCnt) {
+                    ItemSet s = new ItemSet(v);
+                    s.items.add(k);
+                    C.add(s);
+                }
             }
+            // this makes sure that for any ItemSet, its items property is always ordered.
+            C.sort(new Comparator<ItemSet>() {
+                @Override
+                public int compare(ItemSet o1, ItemSet o2) {
+                    return o1.items.get(0).compareTo(o2.items.get(0));
+                }
+            });
             br.close();
         } catch(FileNotFoundException e) {
             e.printStackTrace();
@@ -46,6 +103,10 @@ public class AprioiZckSampleApp {
             return false;
         }
         
+        freqItemSets.addAll(C);
+        ArrayList<ItemSet> C1 = selfJoin(C);
+        prune(C1, C);
+
         return true;
     }
     public static void main(String[] args) {
