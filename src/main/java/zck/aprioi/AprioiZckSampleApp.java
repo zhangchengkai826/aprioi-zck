@@ -18,7 +18,7 @@ public class AprioiZckSampleApp {
         public ItemSet(Integer supCnt) {
             this.supCnt = supCnt;
         }
-        public ArrayList<String> items;
+        public ArrayList<String> items = new ArrayList<String>();
         public Integer supCnt;
     }
     private static ArrayList<ItemSet> selfJoin(ArrayList<ItemSet> x){
@@ -51,10 +51,46 @@ public class AprioiZckSampleApp {
     private static ArrayList<ItemSet> prune(ArrayList<ItemSet> C1, ArrayList<ItemSet> C) {
         ArrayList<ItemSet> result = new ArrayList<ItemSet>();
         for(ItemSet s : C1) {
-            for(String itm : s.items) {
-                System.out.println(itm);
+            boolean ok = true;
+            for(int ms = 0; ms < s.items.size(); ms++) {
+                int c1j = 0, ci = 0, cj = 0;
+                if(ms == c1j) {
+                    ms++;
+                }
+                while(true) {
+                    if(cj >= C.get(ci).items.size()) {
+                        // find an itemset in C
+                        break;
+                    }
+                    if(ci >= C.size()) {
+                        // cannot find an itemset in C
+                        ok = false;
+                        break;
+                    }
+                    int comp = s.items.get(c1j).compareTo(C.get(ci).items.get(cj));
+                    if(comp == 0) {
+                        // test next item
+                        c1j++; cj++;
+                        continue;
+                    } else if(comp < 0) {
+                        // cannot find an itemset in C
+                        ok = false;
+                        break;
+                    } else {
+                        // test next itemset
+                        ci++;
+                        continue;
+                    }
+                }
+                if(!ok) {
+                    // cannot find an itemset in C corresponding to {itemset s in C1 dropping item at position *ms*}
+                    break;
+                }
             }
-            System.out.println("");
+            if(ok) {
+                // find an itemset in C corresponding to {itemset s in C1 dropping item at position *ms*}
+                result.add(s);
+            }
         }
         return result;
     }
@@ -62,6 +98,7 @@ public class AprioiZckSampleApp {
         BufferedReader br;
         ArrayList<ItemSet> C = new ArrayList<ItemSet>();
         ArrayList<ItemSet> freqItemSets = new ArrayList<ItemSet>();
+        ArrayList<ArrayList<String>> dataCache = new ArrayList<>();
         try{
             br = new BufferedReader(new FileReader(dataFilePath));
             String line;
@@ -69,13 +106,22 @@ public class AprioiZckSampleApp {
             HashMap<String, Integer> m = new HashMap<String, Integer>();
             while((line = br.readLine()) != null) {
                 String[] tokens = line.split(" |, ");
+                ArrayList<String> dataRow = new ArrayList<>();
                 for(int i = 1; i < tokens.length; i++) {
                     if(m.get(tokens[i]) == null) {
                         m.put(tokens[i], 1);
                     } else {
                         m.put(tokens[i], m.get(tokens[i])+1);
                     }
+                    dataRow.add(tokens[i]);
                 }
+                dataRow.sort(new Comparator<String>() {
+                    @Override
+                    public int compare(String o1, String o2) {
+                        return o1.compareTo(o2);
+                    }
+                });
+                dataCache.add(dataRow);
             }
             Iterator<String> it = m.keySet().iterator();
             while(it.hasNext()){
@@ -103,9 +149,42 @@ public class AprioiZckSampleApp {
             return false;
         }
         
-        freqItemSets.addAll(C);
-        ArrayList<ItemSet> C1 = selfJoin(C);
-        prune(C1, C);
+        while(true) {
+            freqItemSets.addAll(C);
+            ArrayList<ItemSet> C1 = selfJoin(C);
+            if(C1.isEmpty()) {
+                break;
+            }
+            C1 = prune(C1, C);
+            if(C1.isEmpty()) {
+                break;
+            }
+            C.clear();
+            for(ItemSet s : C1) {
+                int supCnt = 0;
+                for(ArrayList<String> r : dataCache) {
+                    if(r.containsAll(s.items)) {
+                        supCnt++;
+                    }
+                }
+                s.supCnt = supCnt;
+                if(s.supCnt >= minSupCnt) {
+                    C.add(s);
+                }
+            }
+        }
+        
+        System.out.println("INFO: All frequent itemsets:");
+        for(ItemSet s : freqItemSets) {
+            System.out.print("  {");
+            for(int i = 0; i < s.items.size(); i++) {
+                System.out.print(s.items.get(i));
+                if(i != s.items.size()-1) {
+                    System.out.print(", ");
+                }
+            }
+            System.out.println(String.format("} support count: %d", s.supCnt));
+        }
 
         return true;
     }
