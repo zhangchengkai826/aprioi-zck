@@ -20,6 +20,18 @@ public class AprioiZckSampleApp {
         }
         public ArrayList<String> items = new ArrayList<String>();
         public Integer supCnt;
+        public String getItemsRepr() {
+            StringBuilder sb = new StringBuilder();
+            sb.append("{");
+            for(int i = 0; i < items.size(); i++) {
+                sb.append(items.get(i));
+                if(i != items.size()-1) {
+                    sb.append(", ");
+                }
+            }
+            sb.append("}");
+            return sb.toString();
+        }
     }
     private static ArrayList<ItemSet> selfJoin(ArrayList<ItemSet> x){
         ArrayList<ItemSet> result = new ArrayList<ItemSet>();
@@ -99,6 +111,7 @@ public class AprioiZckSampleApp {
         ArrayList<ItemSet> C = new ArrayList<ItemSet>();
         ArrayList<ItemSet> freqItemSets = new ArrayList<ItemSet>();
         ArrayList<ArrayList<String>> dataCache = new ArrayList<>();
+        ArrayList<String> itemsCache = new ArrayList<>();
         try{
             br = new BufferedReader(new FileReader(dataFilePath));
             String line;
@@ -127,6 +140,7 @@ public class AprioiZckSampleApp {
             while(it.hasNext()){
                 String k = it.next();
                 Integer v = m.get(k);
+                itemsCache.add(k);
                 if(v >= minSupCnt) {
                     ItemSet s = new ItemSet(v);
                     s.items.add(k);
@@ -148,7 +162,6 @@ public class AprioiZckSampleApp {
             e.printStackTrace();
             return false;
         }
-        
         while(true) {
             freqItemSets.addAll(C);
             ArrayList<ItemSet> C1 = selfJoin(C);
@@ -176,14 +189,45 @@ public class AprioiZckSampleApp {
         
         System.out.println("INFO: All frequent itemsets:");
         for(ItemSet s : freqItemSets) {
-            System.out.print("  {");
-            for(int i = 0; i < s.items.size(); i++) {
-                System.out.print(s.items.get(i));
-                if(i != s.items.size()-1) {
-                    System.out.print(", ");
+            System.out.println(String.format("  %s support count: %d", s.getItemsRepr(), s.supCnt));
+        }
+
+        System.out.println("INFO: All association rules:");
+        for(ItemSet s : freqItemSets) {
+            // enumerate all non-empty proper subset of s
+            int binSet = 0;
+            for(String itm : s.items) {
+                binSet |= (1 << itemsCache.indexOf(itm));
+            }
+            int b = binSet;
+            while(true) {
+                b = (b - 1) & binSet;
+                if(b == 0) {
+                    break;
+                }
+                ArrayList<String> subsetItems = new ArrayList<>();
+                for(int j = 0; j < itemsCache.size(); j++) {
+                    if((b & (1 << j)) > 0) {
+                        subsetItems.add(itemsCache.get(j));
+                    }
+                }
+                // s.items & subsetItems are both sorted
+                // we can always find the subset
+                ItemSet subset = null;
+                for(ItemSet s1 : freqItemSets) {
+                    if(s1.items.equals(subsetItems)) {
+                        subset = s1;
+                        break;
+                    }
+                }
+                if((double)s.supCnt / subset.supCnt >= minConfThr) {
+                    ArrayList<String> complement = (ArrayList<String>)s.items.clone();
+                    complement.removeAll(subset.items);
+                    ItemSet dummy = new ItemSet(0);
+                    dummy.items = complement;
+                    System.out.println(String.format("  %s => %s", subset.getItemsRepr(), dummy.getItemsRepr()));
                 }
             }
-            System.out.println(String.format("} support count: %d", s.supCnt));
         }
 
         return true;
